@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MusicPulse Executive Command Center</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;background:#0b0b12;color:#eee}
+header{padding:12px 16px;background:#171726;position:sticky;top:0;display:flex;gap:8px;align-items:center}
+nav a{color:#c4b5fd;font-size:13px;margin-right:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:12px}
+.card{background:#1d1d30;border-radius:12px;padding:12px}
+h2{font-size:15px;margin:8px 12px;color:#c4b5fd}table{width:100%;font-size:13px;border-collapse:collapse}
+td,th{padding:6px 8px;border-bottom:1px solid #2a2a44;text-align:left}
+section{padding-bottom:16px}.badge{background:#7c3aed;border-radius:8px;padding:2px 8px;font-size:11px}
+.pill{display:inline-block;background:#2a2a44;border-radius:8px;padding:1px 7px;font-size:11px;margin:1px}
+</style></head><body>
+<header><b>🎵 MusicPulse</b><span class="badge">executive</span>
+<nav><a href="/admin">Ops</a><a href="/docs">API</a></nav></header>
+
+<div class="cards">
+<div class="card"><div>Revenue total</div><b>${{ revenue.total }}</b></div>
+<div class="card"><div>MRR 30d</div><b>${{ revenue.mrr.mrr_30d }}</b></div>
+<div class="card"><div>MRR target</div><b>{{ (revenue.mrr.progress*100)|round(1) }}%</b></div>
+<div class="card"><div>Projection</div><b>${{ forecast.projection }}</b></div>
+</div>
+
+<section><h2>🌍 Fastest growing artists</h2><table>
+{% for a in fastest_artists %}<tr><td>{{ a.key }}</td><td>{{ a.velocity }}</td></tr>{% endfor %}</table></section>
+<section><h2>🎧 Fastest growing songs</h2><table>
+{% for s in fastest_songs %}<tr><td>{{ s.key }}</td><td>{{ s.velocity }}</td></tr>{% endfor %}</table></section>
+<section><h2>💰 Top genres</h2><table>
+{% for g in genres %}<tr><td>{{ g.genre }}</td><td>{{ g.score }}</td></tr>{% endfor %}</table></section>
+<section><h2>🚀 Breakout predictions</h2><table>
+{% for b in breakouts %}<tr><td>{{ b.artist }}</td><td>{{ b.classification }}</td><td>{{ b.confidence }}</td></tr>{% endfor %}</table></section>
+<section><h2>👀 Watchlist</h2><div style="padding:0 12px">{% for w in watch %}<span class="pill">{{ w.artist }}</span>{% endfor %}</div></section>
+<section><h2>📊 Revenue by country</h2><table>
+{% for r in revenue.by_country %}<tr><td>{{ r.key }}</td><td>${{ r.total }}</td></tr>{% endfor %}</table></section>
+<section><h2>🤝 Campaigns</h2><table>
+{% for c in campaigns %}<tr><td>{{ c.name }}</td><td>{{ c.package }}</td><td>ROI {{ c.roi }}</td></tr>{% endfor %}</table></section>
+<section><h2>🕵️ Competitors</h2><table>
+{% for c in competitors %}<tr><td>{{ c.competitor }}</td><td>{{ c.posts }} posts</td><td>{{ c.avg_engagement }}</td></tr>{% endfor %}</table></section>
+<section><h2>🕳️ Content gaps</h2><table>
+{% for g in gaps %}<tr><td>{{ g.topic }}</td><td>{{ g.competitor_mentions }}×</td></tr>{% endfor %}</table></section>
+</body></html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creator-OS Network Overview</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;background:#0b0b12;color:#eee}
+header{padding:12px 16px;background:#171726;position:sticky;top:0;display:flex;gap:8px;align-items:center}
+nav a{color:#c4b5fd;font-size:13px;margin-right:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:12px}
+.card{background:#1d1d30;border-radius:12px;padding:12px}
+h2{font-size:15px;margin:8px 12px;color:#c4b5fd}table{width:100%;font-size:13px;border-collapse:collapse}
+td,th{padding:6px 8px;border-bottom:1px solid #2a2a44;text-align:left}
+section{padding-bottom:16px}.badge{background:#9a3412;border-radius:8px;padding:2px 8px;font-size:11px}
+.pill{display:inline-block;background:#2a2a44;border-radius:8px;padding:1px 7px;font-size:11px;margin:1px}
+</style></head><body>
+<header><b>🎛️ Creator-OS</b><span class="badge">network</span>
+<nav><a href="/admin">Ops</a><a href="/admin/network">Growth</a><a href="/admin/autonomy">Auto</a><a href="/docs">API</a></nav></header>
+
+<div class="cards">
+<div class="card"><div>Zoza factory</div><b>{{ 'online' if zoza.reachable else 'offline' }}</b></div>
+<div class="card"><div>Packages</div><b>{{ packages|length }}</b></div>
+<div class="card"><div>Zoza jobs</div><b>{{ jobs|length }}</b></div>
+<div class="card"><div>Bus events</div><b>{{ events|length }}</b></div>
+</div>
+
+<section><h2>🔌 MusicPulse ↔ Zoza pipeline</h2><table>
+{% for o in opportunities %}<tr><td>{{ o.topic }}</td><td>{{ o.score }}</td><td>~{{ o.predicted_views }} views</td></tr>{% endfor %}</table></section>
+<section><h2>📦 Content package queue</h2><table>
+{% for p in packages %}<tr><td>{{ p.type }}</td><td>{{ p.title[:50] }}</td><td>{{ p.priority }}</td></tr>{% endfor %}</table></section>
+<section><h2>🎬 Render queue</h2><table>
+{% for j in jobs %}<tr><td>#{{ j.job_id }}</td><td>{{ j.package[:8] }}</td><td>{{ j.state }}</td></tr>{% endfor %}</table></section>
+<section><h2>📊 Video intelligence</h2><table>
+{% for f in formats %}<tr><td>{{ f.format }}</td><td>{{ f.score }}</td></tr>{% endfor %}</table></section>
+<section><h2>🚨 Breakouts</h2><table>
+{% for b in breakouts %}<tr><td>{{ b.subject[:50] }}</td><td>{{ b.signal }}</td></tr>{% endfor %}</table></section>
+<section><h2>📡 Event bus monitor</h2><table>
+{% for e in events %}<tr><td>{{ e.event_type }}</td><td>{{ e.source_pulse }}</td><td>#{{ e.id }}</td></tr>{% endfor %}</table></section>
+<section><h2>🧠 Shared knowledge</h2>
+{% for domain, items in knowledge.items() %}<div style="padding:0 12px"><b>{{ domain }}</b>:
+{% for i in items %}<span class="pill">{{ i.key }}</span>{% endfor %}</div>{% endfor %}</section>
+</body></html>

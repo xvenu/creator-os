@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MusicPulse Reality Center</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;background:#0b0b12;color:#eee}
+header{padding:12px 16px;background:#171726;position:sticky;top:0;display:flex;gap:8px;align-items:center}
+nav a{color:#c4b5fd;font-size:13px;margin-right:10px}
+h2{font-size:15px;margin:8px 12px;color:#a5f3c0}table{width:100%;font-size:13px;border-collapse:collapse}
+td,th{padding:6px 8px;border-bottom:1px solid #2a2a44;text-align:left}
+section{padding-bottom:16px}.badge{background:#14532d;border-radius:8px;padding:2px 8px;font-size:11px}
+.pill{display:inline-block;background:#2a2a44;border-radius:8px;padding:1px 7px;font-size:11px;margin:1px}
+</style></head><body>
+<header><b>📰 Reality Center</b><span class="badge">reality-first</span>
+<nav><a href="/admin">Ops</a><a href="/admin/creator">Network</a><a href="/docs">API</a></nav></header>
+
+<section><h2>📚 Source Intelligence Center</h2><table>
+{% for s in sources %}<tr><td>{{ s.name }}</td><td>{{ s.kind }}</td><td>{{ 'official' if s.official else '' }}</td><td>{{ s.trust }}</td></tr>{% endfor %}</table></section>
+<section><h2>🖼️ Media Asset Center</h2><table>
+{% for a in assets %}<tr><td>{{ a.title[:45] }}</td><td>{{ a.kind }}</td><td>{{ a.rights }}</td></tr>{% endfor %}</table></section>
+<section><h2>✅ Verification Center</h2><table>
+{% for v in verifications %}<tr><td>{{ v.subject[:50] }}</td><td>{{ v.verdict }}</td></tr>{% endfor %}</table></section>
+<section><h2>🎤 Artist Intelligence Center</h2><table>
+{% for a in artists %}<tr><td>{{ a.artist }}</td><td>{{ a.label }}</td><td>{{ a.momentum }}</td></tr>{% endfor %}</table></section>
+<section><h2>🏷️ Label Intelligence Center</h2><table>
+{% for l in labels %}<tr><td>{{ l.label }}</td><td>{{ l.kind }}</td><td>{{ l.activity }}</td></tr>{% endfor %}</table></section>
+<section><h2>🗞️ Newsroom Center</h2><table>
+{% for r in reports %}<tr><td>{{ r.title[:55] }}</td><td>{{ r.verification }}</td></tr>{% endfor %}</table></section>
+<section><h2>🎬 Documentary Projects</h2><table>
+{% for d in docs %}<tr><td>{{ d.subject }}</td><td>{{ d.package_id[:8] if d.package_id else '—' }}</td></tr>{% endfor %}</table></section>
+</body></html>

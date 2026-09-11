@@ -1,0 +1,14 @@
+# football-pulse runtime dependencies (mirrors pyproject.toml).
+# Video production is Zoza-owned; no ffmpeg/PIL/provider SDKs required here.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+pydantic-settings>=2.2
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+alembic>=1.13
+redis>=5.0
+tenacity>=8.2
+structlog>=24.1
+httpx>=0.27
+python-dateutil>=2.8

@@ -1,0 +1,55 @@
+"""Zoza dispatch queues.
+
+- fp:queue:zoza → zoza_dispatcher (submit packages, monitor jobs, retry)
+"""
+from __future__ import annotations
+
+import json
+import uuid
+
+from app.core.config import Settings
+from app.core.logging import get_logger
+from app.queue.redis_queue import get_redis
+
+log = get_logger("queue.zoza")
+
+QUEUE_TO_AGENT: dict[str, str] = {
+    "fp:queue:zoza": "zoza_dispatcher",
+}
+
+AGENT_TO_QUEUE: dict[str, str] = {v: k for k, v in QUEUE_TO_AGENT.items()}
+
+
+def zoza_queue_names() -> list[str]:
+    return sorted(QUEUE_TO_AGENT.keys())
+
+
+def queue_for_agent(agent_name: str) -> str | None:
+    return AGENT_TO_QUEUE.get(agent_name)
+
+
+async def enqueue_zoza(payload: dict, settings: Settings,
+                       queue_name: str = "fp:queue:zoza") -> str:
+    if queue_name not in QUEUE_TO_AGENT:
+        raise ValueError(f"Unknown zoza queue: {queue_name}")
+    client = get_redis(settings)
+    envelope = {"id": str(uuid.uuid4()), "agent": QUEUE_TO_AGENT[queue_name],
+                "payload": payload}
+    await client.rpush(queue_name, json.dumps(envelope))
+    await client.expire(queue_name, settings.redis_default_ttl_seconds)
+    log.info("zoza_enqueued", queue=queue_name, job_id=envelope["id"])
+    return envelope["id"]
+
+
+async def dequeue_zoza(queue_name: str, settings: Settings, timeout: int = 5) -> dict | None:
+    client = get_redis(settings)
+    item = await client.blpop(queue_name, timeout=timeout)
+    if not item:
+        return None
+    _, raw = item
+    return json.loads(raw)
+
+
+async def zoza_queue_length(queue_name: str, settings: Settings) -> int:
+    client = get_redis(settings)
+    return await client.llen(queue_name)

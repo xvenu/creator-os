@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MusicPulse Autonomy Command Center</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;background:#0b0b12;color:#eee}
+header{padding:12px 16px;background:#171726;position:sticky;top:0;display:flex;gap:8px;align-items:center}
+nav a{color:#c4b5fd;font-size:13px;margin-right:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:12px}
+.card{background:#1d1d30;border-radius:12px;padding:12px}
+h2{font-size:15px;margin:8px 12px;color:#c4b5fd}table{width:100%;font-size:13px;border-collapse:collapse}
+td,th{padding:6px 8px;border-bottom:1px solid #2a2a44;text-align:left}
+section{padding-bottom:16px}.badge{background:#047857;border-radius:8px;padding:2px 8px;font-size:11px}
+.badge.off{background:#7f1d1d}.pill{display:inline-block;background:#2a2a44;border-radius:8px;padding:1px 7px;font-size:11px;margin:1px}
+</style></head><body>
+<header><b>🎵 MusicPulse</b>
+{% if running %}<span class="badge">autonomous ●</span>{% else %}<span class="badge off">stopped</span>{% endif %}
+<nav><a href="/admin">Ops</a><a href="/admin/executive">Exec</a><a href="/docs">API</a></nav></header>
+
+<div class="cards">
+<div class="card"><div>Strategy</div><b>{{ strategy.horizon or '—' }}</b><div>{{ strategy.genres or [] }}</div></div>
+<div class="card"><div>Goals</div><b>{{ goals|length }}</b></div>
+<div class="card"><div>Cycles</div><b>{{ cycles|length }}</b></div>
+<div class="card"><div>Decisions</div><b>{{ decisions|length }}</b></div>
+</div>
+
+<section><h2>🎯 Goals</h2><table>
+{% for g in goals %}<tr><td>{{ g.title }}</td><td>{{ g.category }}</td><td>{{ (g.progress*100)|round(1) }}%</td><td>{{ g.status }}</td></tr>{% endfor %}</table></section>
+<section><h2>💡 Opportunity board</h2><table>
+{% for o in opportunities %}<tr><td>{{ o.key }}</td><td>{{ o.category }}</td><td>{{ o.impact }}</td><td>{{ '✓' if o.allocated else '' }}</td></tr>{% endfor %}</table></section>
+<section><h2>💰 Revenue optimizer</h2><table>
+{% for o in optimizations %}<tr><td>{{ o.scope }}</td><td>{{ o.recommendation[:80] }}</td><td>+${{ o.expected_uplift }}</td></tr>{% endfor %}</table></section>
+<section><h2>🧠 Memory lessons</h2><table>
+{% for m in lessons %}<tr><td>{{ m.kind }}</td><td>{{ m.title }}</td><td>{{ m.score }}</td></tr>{% endfor %}</table></section>
+<section><h2>📜 Decision audit</h2><table>
+{% for d in decisions %}<tr><td>{{ d.question[:60] }}</td><td><b>{{ d.chosen }}</b></td><td>{{ d.outcome }}</td></tr>{% endfor %}</table></section>
+<section><h2>⚙️ Autonomy cycles</h2><table>
+{% for c in cycles %}<tr><td>#{{ c.id }}</td><td>{{ c.status }}</td><td>{{ c.at }}</td></tr>{% endfor %}</table></section>
+<section><h2>📡 Activity feed</h2><table>
+{% for f in feed %}<tr><td>{{ f.actor }}</td><td>{{ f.action }}</td><td>{{ f.entity }}</td></tr>{% endfor %}</table></section>
+</body></html>

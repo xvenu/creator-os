@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MusicPulse Network Command Center</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;background:#0b0b12;color:#eee}
+header{padding:12px 16px;background:#171726;position:sticky;top:0;display:flex;gap:8px;align-items:center}
+nav a{color:#c4b5fd;font-size:13px;margin-right:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:12px}
+.card{background:#1d1d30;border-radius:12px;padding:12px}
+h2{font-size:15px;margin:8px 12px;color:#c4b5fd}table{width:100%;font-size:13px;border-collapse:collapse}
+td,th{padding:6px 8px;border-bottom:1px solid #2a2a44;text-align:left}
+section{padding-bottom:16px}.badge{background:#0e7490;border-radius:8px;padding:2px 8px;font-size:11px}
+.pill{display:inline-block;background:#2a2a44;border-radius:8px;padding:1px 7px;font-size:11px;margin:1px}
+</style></head><body>
+<header><b>🎵 MusicPulse</b><span class="badge">network</span>
+<nav><a href="/admin">Ops</a><a href="/admin/executive">Exec</a><a href="/admin/autonomy">Auto</a><a href="/docs">API</a></nav></header>
+
+<div class="cards">
+<div class="card"><div>Followers/day</div><b>{{ growth.followers_per_day }}</b></div>
+<div class="card"><div>Conv. rate</div><b>{{ growth.funnel.conversion_rate }}</b></div>
+<div class="card"><div>Asset value</div><b>${{ valuation.total_valuation }}</b></div>
+<div class="card"><div>Products $</div><b>${{ product_totals.revenue }}</b></div>
+</div>
+
+<section><h2>🌐 Network nodes</h2><div style="padding:0 12px">{% for n in nodes %}<span class="pill">{{ n.name }}</span>{% endfor %}</div></section>
+<section><h2>📈 Growth funnel</h2><table>
+<tr><td>Visits</td><td>{{ growth.funnel.visits }}</td></tr>
+<tr><td>Conversions</td><td>{{ growth.funnel.conversions }}</td></tr>
+<tr><td>CPA</td><td>${{ growth.funnel.cpa }}</td></tr>
+<tr><td>LTV</td><td>${{ growth.funnel.ltv }}</td></tr></table></section>
+<section><h2>🏠 Owned assets</h2><table>
+{% for a in assets %}<tr><td>{{ a.name }}</td><td>{{ a.kind }}</td><td>${{ a.revenue }}</td></tr>{% endfor %}</table></section>
+<section><h2>🔮 Forecasts (30d)</h2><table>
+{% for f in forecasts %}<tr><td>{{ f.subject }}</td><td>{{ f.type }}</td><td>{{ f.confidence }}</td></tr>{% endfor %}</table></section>
+<section><h2>🚨 Breakouts</h2><table>
+{% for b in breakouts %}<tr><td>{{ b.subject }}</td><td>{{ b.signal }}</td></tr>{% endfor %}</table></section>
+<section><h2>💼 Inventory</h2><table>
+{% for k,v in inventory.available.items() %}<tr><td>{{ k }}</td><td>{{ v }} slots</td></tr>{% endfor %}</table></section>
+<section><h2>⚙️ Revenue execution</h2><table>
+<tr><td>Campaigns</td><td>{{ rex.campaigns }}</td></tr>
+<tr><td>Revenue</td><td>${{ rex.revenue }}</td></tr>
+<tr><td>Utilization</td><td>{{ rex.utilization }}</td></tr></table></section>
+<section><h2>🛍️ Products</h2><table>
+{% for p in products %}<tr><td>{{ p.name }}</td><td>{{ p.sales }} sales</td><td>${{ p.revenue }}</td></tr>{% endfor %}</table></section>
+</body></html>
