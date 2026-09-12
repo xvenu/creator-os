@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+*.db
+.venv/
+.pytest_cache/
+output/
+exports/
+*.mp4
+*.wav

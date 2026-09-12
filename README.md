@@ -7,7 +7,8 @@ living in its own subdirectory. Pulses share conventions, never code paths.
 creator-os/
   music-pulse/      ✅ finished product (v0.6.0) — intelligence brain
   shared/           ✅ event_bus, orchestrator, knowledge (used by all pulses)
-  football-pulse/   🔜 planned — same architecture, new domain
+  football-pulse/   ✅ Zoza client pulse — intelligence → packages → factory
+  zoza-factory/     ✅ autonomous production factory (v0.1.0) — Pulse decides WHAT, Zoza decides HOW
 ```
 
 External systems coordinated (not moved, configured by path):
