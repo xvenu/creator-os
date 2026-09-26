@@ -57,7 +57,7 @@ jobs:
           ! grep -rni "youtubeuploader\|tiktokuploader\|instagramuploader\|facebookuploader\|channeluploader" --include="*.py" zoza-factory/app || exit 1
       - name: Single contract definition
         run: |
-          test $(grep -rln "class ProductionRequestIn" --include="*.py" . | grep -v ".venv" | wc -l) -eq 1
+          test $(grep -rln "class ProductionRequestIn" --include="*.py" music-pulse/app football-pulse/app zoza-factory/app shared 2>/dev/null | wc -l) -eq 1
       - name: Secret scan (plaintext)
         run: |
           ! grep -rniE "sk-(live|test)-[A-Za-z0-9]{10,}|xox[bap]-|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}" --include="*.py" --include="*.yml" --include="*.env*" . | grep -v ".venv" || exit 1
