@@ -23,6 +23,14 @@ def report(db) -> dict:
         ProductionRequest.state == "exported").scalar() or 0
     failed = db.query(func.count()).select_from(ProductionRequest).filter(
         ProductionRequest.state == "failed").scalar() or 0
+    from app.modules import content_types as ct_mod
+    by_content: dict[str, int] = {}
+    try:
+        rows = db.query(ProductionRequest.content_type,
+                        func.count()).group_by(ProductionRequest.content_type).all()
+        by_content = {str(ct or "video"): int(n) for ct, n in rows}
+    except Exception:
+        pass
     return {
         "factory": "zoza-factory",
         "active_jobs": int(active),
@@ -33,4 +41,6 @@ def report(db) -> dict:
         "average_export_time": round(float(avg_export), 3),
         "provider_availability": renderer_mod.provider_availability(),
         "asset_availability": assets_mod.catalog_availability(db),
+        "content_types": ct_mod.families(),
+        "jobs_by_content_type": by_content,
     }

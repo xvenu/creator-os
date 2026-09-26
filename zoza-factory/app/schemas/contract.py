@@ -24,16 +24,45 @@ class Urgency(str, Enum):
     breaking = "breaking"
 
 
+class ContentType(str, Enum):
+    """Universal output family. Orthogonal to ProductionMode.
+
+    - VIDEO: generic pulse video (short/mid, any pulse).
+    - ANIME: stylized animated segment/episode.
+    - MOVIE: long-form cinematic output (acts).
+    - AD: short commercial/awareness spot (hook + CTA).
+    - AI_FILM: fully synthetic short/film (expects AI_CREATIVE or
+      HYBRID with ai_generation_allowed=True).
+    Real vs AI is still decided by ProductionMode; ContentType decides
+    structure, pacing, voice default, and render profile.
+    """
+    VIDEO = "video"
+    ANIME = "anime"
+    MOVIE = "movie"
+    AD = "ad"
+    AI_FILM = "ai_film"
+
+
+CONTENT_TYPES = tuple(t.value for t in ContentType)
+
+# Any pulse may request production. Well-known pulses are listed for
+# docs/discovery only — the factory never allow-lists pulses.
+KNOWN_PULSES = ("music-pulse", "football-pulse", "anime-pulse",
+                "movie-pulse", "ads-pulse")
+
+
 REQUEST_STATES = ("created", "planned", "acquiring", "assembling",
                   "rendering", "exported", "failed")
 
 
 class ProductionRequestIn(BaseModel):
     request_id: str = Field(min_length=1, max_length=128)
+    # Pulse origin: free-form so ANY present or future pulse can produce.
+    # Never validated against an allow-list (see KNOWN_PULSES, docs only).
     pulse: str = ""
     goal: str = Field(min_length=1)
     style: str = ""
-    length_seconds: int = Field(gt=0, le=3600)
+    length_seconds: int = Field(gt=0, le=10800)
     urgency: Urgency = Urgency.normal
     production_mode: ProductionMode = ProductionMode.REALITY_FIRST
     ai_generation_allowed: bool = False
@@ -42,6 +71,15 @@ class ProductionRequestIn(BaseModel):
     voice_profile: str = ""
     target_audience: str = ""
     priority: int = Field(default=0, ge=0, le=100)
+    # Universal factory fields (all optional → backward compatible).
+    content_type: ContentType = ContentType.VIDEO
+    format_variant: str = ""  # pulse-defined: short|episode|feature|spot|...
+    aspect_ratio: str = "16:9"
+    resolution: str = "1080p"
+    language: str = "en"
+    narration: str = ""  # explicit voiceover script (director also accepts goal+evidence fallback)
+    brand_context: str = ""  # ads: brand/product line (production only, never revenue)
+    call_to_action: str = ""  # ads: closing CTA line
 
     @field_validator("request_id")
     @classmethod

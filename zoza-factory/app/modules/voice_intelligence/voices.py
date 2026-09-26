@@ -27,6 +27,21 @@ PROFILES: dict[str, dict] = {
         "pitch": "low", "audiences": ["history", "documentary", "general"],
         "keywords": ["history", "historical", "archive", "legacy", "era", "past"],
     },
+    "anime-dub": {
+        "tone": "expressive-dynamic", "pacing_wpm": 155, "emotion": "heroic-tender",
+        "pitch": "mid-high", "audiences": ["anime", "general", "fans"],
+        "keywords": ["anime", "manga", "episode", "shonen", "shojo", "isekai", "dub"],
+    },
+    "cinematic-trailer": {
+        "tone": "epic-resonant", "pacing_wpm": 115, "emotion": "awe-building",
+        "pitch": "low", "audiences": ["film", "cinema", "movie", "general"],
+        "keywords": ["cinematic", "trailer", "film", "movie", "epic", "feature", "cinema"],
+    },
+    "commercial": {
+        "tone": "bright-confident", "pacing_wpm": 150, "emotion": "upbeat-trustworthy",
+        "pitch": "mid", "audiences": ["commercial", "ad", "general", "buyers"],
+        "keywords": ["commercial", "ad", "advert", "spot", "brand", "product", "sale", "offer"],
+    },
 }
 
 

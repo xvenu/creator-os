@@ -10,6 +10,14 @@ import sys
 
 FACTORY_NAME = "zoza-factory"
 
+# Advertised production surface: every content family × mode, plus
+# pipeline stages. Pulses discover this via GET /api/v1/capabilities.
+FACTORY_CAPABILITIES = [
+    "video", "anime", "movie", "ad", "ai_film",
+    "REALITY_ONLY", "REALITY_FIRST", "HYBRID", "AI_CREATIVE",
+    "voice", "timeline", "render", "export",
+]
+
 
 def _shared():
     try:
@@ -40,10 +48,7 @@ def heartbeat(queue_depth: int = 0, load: float = 0.0) -> None:
         if root not in sys.path:
             sys.path.insert(0, root)
         from shared import orchestrator  # type: ignore
-        orchestrator.register_factory(
-            FACTORY_NAME,
-            ["REALITY_ONLY", "REALITY_FIRST", "HYBRID", "AI_CREATIVE",
-             "voice", "timeline", "render", "export"])
+        orchestrator.register_factory(FACTORY_NAME, list(FACTORY_CAPABILITIES))
         orchestrator.heartbeat(FACTORY_NAME, "healthy", load, queue_depth)
     except Exception:
         pass

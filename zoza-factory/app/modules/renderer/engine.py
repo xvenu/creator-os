@@ -11,9 +11,14 @@ import time
 from pathlib import Path
 
 PROVIDERS = {
-    "render": [{"name": "simulated-1080p", "available": True}],
+    "render": [{"name": "simulated-1080p", "available": True},
+               {"name": "simulated-anime-1080p", "available": True},
+               {"name": "simulated-cinema-4k", "available": True},
+               {"name": "simulated-ad-1080p", "available": True},
+               {"name": "simulated-ai-1080p", "available": True}],
     "voice": [{"name": "simulated-tts", "available": True}],
-    "assets": [{"name": "factory-catalog", "available": True}],
+    "assets": [{"name": "factory-catalog", "available": True},
+               {"name": "factory-synthetic", "available": True}],
 }
 
 
@@ -28,6 +33,9 @@ def assemble(request_id: str, timeline: dict, voice: dict, output_dir: str) -> d
     out.mkdir(parents=True, exist_ok=True)
     manifest = {
         "request_id": request_id,
+        "content_type": timeline.get("content_type", "video"),
+        "structure": timeline.get("structure", "beats"),
+        "render_profile": timeline.get("render_profile", "simulated-1080p"),
         "scenes": timeline.get("scenes", []),
         "total_seconds": timeline.get("total_seconds", 0),
         "voice": {"profile": voice.get("profile"), "tone": voice.get("tone"),
@@ -46,15 +54,19 @@ def render_video(request_id: str, timeline: dict, output_dir: str) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     started = time.time()
     total = float(timeline.get("total_seconds", 0))
+    profile = timeline.get("render_profile", "simulated-1080p")
+    content_type = timeline.get("content_type", "video")
     video_path = out / "video.mp4"
     video_path.write_bytes(
-        f"ZOZA-FACTORY-SIMULATED-RENDER request={request_id} seconds={total}\n".encode())
+        f"ZOZA-FACTORY-SIMULATED-RENDER request={request_id} seconds={total} "
+        f"profile={profile} content={content_type}\n".encode())
     thumb_path = out / "thumbnail.jpg"
     thumb_path.write_bytes(
-        f"ZOZA-FACTORY-SIMULATED-THUMBNAIL request={request_id}\n".encode())
+        f"ZOZA-FACTORY-SIMULATED-THUMBNAIL request={request_id} content={content_type}\n".encode())
     elapsed = max(time.time() - started, 0.001)
     return {"video_path": str(video_path.resolve()), "thumbnail_path": str(thumb_path.resolve()),
-            "duration_seconds": total, "render_seconds": elapsed}
+            "duration_seconds": total, "render_seconds": elapsed,
+            "render_profile": profile, "content_type": content_type}
 
 
 def export_package(request_id: str, video_path: str, thumbnail_path: str,

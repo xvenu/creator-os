@@ -25,6 +25,7 @@ def submit(db, data: dict) -> dict:
     from app.models.production import ProductionRequest
     if db.query(ProductionRequest).filter_by(request_id=data["request_id"]).first():
         raise ValueError(f"request {data['request_id']} already exists")
+    from app.modules import content_types as ct_mod
     row = ProductionRequest(
         request_id=data["request_id"], pulse=data.get("pulse", ""),
         goal=data["goal"], style=data.get("style", ""),
@@ -35,12 +36,21 @@ def submit(db, data: dict) -> dict:
         sources=list(data.get("sources", [])), evidence=list(data.get("evidence", [])),
         voice_profile=data.get("voice_profile", ""),
         target_audience=data.get("target_audience", ""),
-        priority=int(data.get("priority", 0)), state="created")
+        priority=int(data.get("priority", 0)), state="created",
+        content_type=ct_mod.normalize(data.get("content_type", "video")),
+        format_variant=str(data.get("format_variant", "")),
+        aspect_ratio=str(data.get("aspect_ratio", "16:9") or "16:9"),
+        resolution=str(data.get("resolution", "1080p") or "1080p"),
+        language=str(data.get("language", "en") or "en"),
+        narration=str(data.get("narration", "") or ""),
+        brand_context=str(data.get("brand_context", "") or ""),
+        call_to_action=str(data.get("call_to_action", "") or ""))
     db.add(row)
     db.commit()
     db.refresh(row)
     assets_mod.seed_catalog(db)
-    cos.emit("VIDEO_REQUESTED", {"request_id": row.request_id, "pulse": row.pulse})
+    cos.emit("VIDEO_REQUESTED", {"request_id": row.request_id, "pulse": row.pulse,
+                                "content_type": row.content_type})
     return serialize(row)
 
 
@@ -95,14 +105,22 @@ def execute(db, request_id: str, output_dir: str, min_trust: float = 0.6) -> dic
 
         _touch(row, "rendering")
         db.commit()
-        cos.emit("VIDEO_RENDER_STARTED", {"request_id": request_id})
+        ct = getattr(row, "content_type", "video") or "video"
+        cos.emit("VIDEO_RENDER_STARTED", {"request_id": request_id, "content_type": ct})
         rendered = renderer_mod.render_video(request_id, timeline, output_dir)
         row.render_seconds = rendered["render_seconds"]
-        cos.emit("VIDEO_RENDER_FINISHED", {"request_id": request_id})
+        cos.emit("VIDEO_RENDER_FINISHED", {"request_id": request_id, "content_type": ct})
 
         metadata = {"title": row.goal, "pulse": row.pulse,
+                    "content_type": getattr(row, "content_type", "video") or "video",
+                    "format_variant": getattr(row, "format_variant", "") or "",
+                    "aspect_ratio": getattr(row, "aspect_ratio", "16:9") or "16:9",
+                    "resolution": getattr(row, "resolution", "1080p") or "1080p",
+                    "language": getattr(row, "language", "en") or "en",
                     "production_mode": row.production_mode,
                     "strategy": strategy.get("strategy", ""),
+                    "structure": (timeline.get("structure", "beats")),
+                    "render_profile": timeline.get("render_profile", ""),
                     "reality_ratio": strategy.get("reality_ratio", 1.0),
                     "voice_profile": voice.get("profile", "")}
         result = renderer_mod.export_package(
@@ -113,7 +131,8 @@ def execute(db, request_id: str, output_dir: str, min_trust: float = 0.6) -> dic
         _touch(row, "exported")
         db.commit()
         cos.heartbeat()
-        cos.emit("VIDEO_EXPORTED", {"request_id": request_id, "job_id": request_id})
+        cos.emit("VIDEO_EXPORTED", {"request_id": request_id, "job_id": request_id,
+                                   "content_type": ct})
         cos.validate_export_against_shared(result["export"])
         return result["export"]
     except Exception as exc:
@@ -134,6 +153,14 @@ def serialize(row) -> dict:
         "sources": row.sources, "evidence": row.evidence,
         "voice_profile": row.voice_profile, "target_audience": row.target_audience,
         "priority": row.priority, "state": row.state,
+        "content_type": getattr(row, "content_type", "video") or "video",
+        "format_variant": getattr(row, "format_variant", "") or "",
+        "aspect_ratio": getattr(row, "aspect_ratio", "16:9") or "16:9",
+        "resolution": getattr(row, "resolution", "1080p") or "1080p",
+        "language": getattr(row, "language", "en") or "en",
+        "narration": getattr(row, "narration", "") or "",
+        "brand_context": getattr(row, "brand_context", "") or "",
+        "call_to_action": getattr(row, "call_to_action", "") or "",
         "strategy": row.strategy_json, "timeline": row.timeline_json,
         "export": row.export_json, "error": row.error,
         "render_seconds": row.render_seconds, "export_seconds": row.export_seconds,

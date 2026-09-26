@@ -29,6 +29,15 @@ class ProductionRequest(Base):
     voice_profile: Mapped[str] = mapped_column(String(64), default="")
     target_audience: Mapped[str] = mapped_column(String(128), default="")
     priority: Mapped[int] = mapped_column(Integer, default=0)
+    # Universal factory fields (additive; default video keeps old rows valid).
+    content_type: Mapped[str] = mapped_column(String(16), default="video")
+    format_variant: Mapped[str] = mapped_column(String(32), default="")
+    aspect_ratio: Mapped[str] = mapped_column(String(16), default="16:9")
+    resolution: Mapped[str] = mapped_column(String(16), default="1080p")
+    language: Mapped[str] = mapped_column(String(16), default="en")
+    narration: Mapped[str] = mapped_column(Text, default="")
+    brand_context: Mapped[str] = mapped_column(String(256), default="")
+    call_to_action: Mapped[str] = mapped_column(String(256), default="")
 
     state: Mapped[str] = mapped_column(String(16), default="created", index=True)
     strategy_json: Mapped[dict] = mapped_column(JSON, default=dict)

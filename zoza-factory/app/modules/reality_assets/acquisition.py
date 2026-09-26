@@ -9,16 +9,30 @@ import time
 from datetime import datetime, timezone
 
 # Hierarchy rank (lower = preferred). AI is always last.
+# New families slot into the existing ladder without changing the order
+# of the original five kinds (AI stays last by construction).
 KIND_RANK = {
     "real_footage": 0,
+    "film_scene": 0,
     "real_photo": 1,
+    "anime_keyframe": 1,
+    "anime_background": 1,
+    "product_shot": 1,
     "licensed": 2,
+    "brand_asset": 2,
     "public_domain": 3,
+    "licensed_stock": 3,
     "ai_generated": 4,
+    "ai_video": 4,
+    "ai_image": 4,
 }
 
+# AI kinds (synthetic, factory-generated) — always ranked last.
+AI_KINDS = ("ai_generated", "ai_video", "ai_image")
+
 CATEGORIES = ("official_photo", "official_video", "press", "documentary",
-              "archive", "news", "historical", "licensed_stock", "generated")
+              "archive", "news", "historical", "licensed_stock", "generated",
+              "anime", "film", "commercial", "product", "brand")
 
 
 def _now_iso() -> str:
@@ -74,6 +88,10 @@ def rank_key(asset: dict) -> tuple:
             str(asset.get("source", "")))
 
 
+def is_ai(asset: dict) -> bool:
+    return str(asset.get("kind", "")) in AI_KINDS
+
+
 def order(candidates: list[dict]) -> list[dict]:
     return sorted(candidates, key=rank_key)
 
@@ -95,6 +113,22 @@ SEED_CATALOG: list[dict] = [
      "source": "factory-seed: official photo library", "license": "official-use attribution-required",
      "trust_score": 0.85, "rights_status": "RESTRICTED", "duration_seconds": 5.0,
      "tags": ["official", "portrait"]},
+    {"asset_id": "seed-anime-001", "kind": "anime_background", "category": "anime",
+     "source": "factory-seed: anime background library", "license": "factory-licensed",
+     "trust_score": 0.8, "rights_status": "CLEARED", "duration_seconds": 10.0,
+     "tags": ["anime", "background", "general"]},
+    {"asset_id": "seed-anime-002", "kind": "anime_keyframe", "category": "anime",
+     "source": "factory-seed: anime keyframe library", "license": "factory-licensed",
+     "trust_score": 0.8, "rights_status": "CLEARED", "duration_seconds": 5.0,
+     "tags": ["anime", "character", "general"]},
+    {"asset_id": "seed-film-001", "kind": "film_scene", "category": "film",
+     "source": "factory-seed: cinematic b-roll library", "license": "factory-licensed",
+     "trust_score": 0.8, "rights_status": "CLEARED", "duration_seconds": 30.0,
+     "tags": ["film", "cinematic", "movie", "general"]},
+    {"asset_id": "seed-ad-001", "kind": "product_shot", "category": "product",
+     "source": "factory-seed: commercial product frame library", "license": "factory-licensed",
+     "trust_score": 0.8, "rights_status": "CLEARED", "duration_seconds": 5.0,
+     "tags": ["ad", "commercial", "product", "general"]},
 ]
 
 

@@ -112,8 +112,20 @@ def rights_validate(body: dict):
 
 @router.post("/voice/match")
 def voice_match(body: dict):
-    return voice_mod.match(body.get("voice_profile", ""), body.get("goal", ""),
-                           body.get("style", ""), body.get("target_audience", ""))
+    explicit = (body.get("voice_profile", "") or "").strip()
+    if explicit:
+        return voice_mod.match(explicit, body.get("goal", ""),
+                               body.get("style", ""), body.get("target_audience", ""))
+    # No explicit profile: keyword/audience signals first, content default only as fallback.
+    result = voice_mod.match("", body.get("goal", ""),
+                             body.get("style", ""), body.get("target_audience", ""))
+    if result.get("reason", "").startswith("no signal matched"):
+        from app.modules import content_types as ct_mod
+        default = ct_mod.default_voice_for(body.get("content_type", "video"))
+        if result.get("profile") != default:
+            return voice_mod.match(default, body.get("goal", ""),
+                                   body.get("style", ""), body.get("target_audience", ""))
+    return result
 
 
 @router.post("/timeline/build")
@@ -122,9 +134,67 @@ def timeline_build(body: dict):
     length = body.get("length_seconds", 0)
     if not narration or not length:
         raise HTTPException(status_code=422, detail="narration and length_seconds required")
-    return timeline_mod.build(narration, float(length), body.get("assets", []))
+    return timeline_mod.build_for_content(
+        narration, float(length), body.get("assets", []),
+        content_type=body.get("content_type", "video"),
+        call_to_action=body.get("call_to_action", ""))
 
 
 @router.get("/capacity")
 def capacity(db=Depends(get_db)):
     return capacity_mod.report(db)
+
+
+@router.get("/capabilities")
+def capabilities():
+    """Discovery for ANY pulse: families, modes, voices, limits."""
+    from app.modules import content_types as ct_mod
+    from app.modules import ai_generation as ai_mod
+    from app.modules.renderer import engine as renderer_mod
+    from app.modules.voice_intelligence import voices as voice_mod
+    from app.schemas.contract import KNOWN_PULSES, ProductionMode
+    return {
+        "factory": "zoza-factory",
+        "pulse_contract": "Contract V2 — any pulse may request (no allow-list)",
+        "known_pulses": list(KNOWN_PULSES),
+        "content_types": ct_mod.describe(),
+        "production_modes": [m.value for m in ProductionMode],
+        "voices": sorted(voice_mod.PROFILES),
+        "render_providers": renderer_mod.provider_availability()["render"],
+        "ai_providers": ai_mod.provider_availability(),
+        "max_length_seconds": 10800,
+        "guarantees": [
+            "Pulse decides WHAT, Zoza decides HOW",
+            "AI is always the last option",
+            "BLOCKED rights never usable",
+            "video length == narration length",
+            "exports are rendered, never published",
+        ],
+    }
+
+
+@router.get("/content-types")
+def content_types():
+    from app.modules import content_types as ct_mod
+    return {"content_types": ct_mod.describe()}
+
+
+@router.post("/pulses/register")
+def pulse_register(body: dict):
+    """Register ANY pulse (present or future). No allow-list: the name is
+    recorded in the event bus and echoed with current capabilities."""
+    from app.services import creator_os as cos
+    name = str(body.get("pulse", "") or body.get("name", "")).strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="pulse name required")
+    if len(name) > 64:
+        raise HTTPException(status_code=422, detail="pulse name too long")
+    cos.emit("PULSE_REGISTERED", {"pulse": name,
+                                 "content_types": body.get("content_types", []),
+                                 "notes": body.get("notes", "")})
+    cos.heartbeat()
+    from app.modules import content_types as ct_mod
+    return {"pulse": name, "registered": True,
+            "factory": "zoza-factory",
+            "content_types": ct_mod.families(),
+            "note": "no allow-list enforced — this pulse may now submit Contract V2 requests"}
