@@ -44,7 +44,8 @@ def submit(db, data: dict) -> dict:
         language=str(data.get("language", "en") or "en"),
         narration=str(data.get("narration", "") or ""),
         brand_context=str(data.get("brand_context", "") or ""),
-        call_to_action=str(data.get("call_to_action", "") or ""))
+        call_to_action=str(data.get("call_to_action", "") or ""),
+        asset_requirements=dict(data.get("asset_requirements", {}) or {}))
     db.add(row)
     db.commit()
     db.refresh(row)
@@ -66,11 +67,14 @@ def plan(db, request_id: str, min_trust: float = 0.6) -> dict:
     """created → planned: director decision + persisted strategy."""
     from app.models.production import ProductionAsset
     row = get(db, request_id)
-    catalog = [{"source": r.source, "license": r.license, "trust_score": r.trust_score,
-                "rights_status": r.rights_status, "kind": r.kind, "category": r.category,
-                "duration_seconds": r.duration_seconds,
-                "tags": (r.meta_json or {}).get("tags", [])}
-               for r in db.query(ProductionAsset).all()]
+    catalog = [assets_mod.manifest(
+        r.source, r.license, r.trust_score, r.rights_status,
+        kind=r.kind, category=r.category,
+        duration_seconds=r.duration_seconds,
+        path=(r.meta_json or {}).get("path", ""),
+        tags=(r.meta_json or {}).get("tags", []),
+        provenance=r.source)
+        for r in db.query(ProductionAsset).all()]
     req = serialize(row)
     req["_catalog_assets"] = catalog
     decision = director_mod.decide(req, min_trust=min_trust)
@@ -107,9 +111,26 @@ def execute(db, request_id: str, output_dir: str, min_trust: float = 0.6) -> dic
         db.commit()
         ct = getattr(row, "content_type", "video") or "video"
         cos.emit("VIDEO_RENDER_STARTED", {"request_id": request_id, "content_type": ct})
-        rendered = renderer_mod.render_video(request_id, timeline, output_dir)
+        rendered = renderer_mod.render_video(
+            request_id, timeline, output_dir, voice=voice)
         row.render_seconds = rendered["render_seconds"]
         cos.emit("VIDEO_RENDER_FINISHED", {"request_id": request_id, "content_type": ct})
+
+        from app.modules.renderer import media as media_mod
+        expect = {"duration": float(timeline.get("total_seconds", 0)),
+                  "width": int(rendered.get("width", 0)),
+                  "height": int(rendered.get("height", 0)),
+                  "subtitle_expected": bool((timeline.get("subtitles_srt", "") or "").strip())}
+        qc = media_mod.qc_report(rendered.get("qc", {}), expect) \
+            if rendered.get("provider") != "simulated-test-only" else \
+            {"checks": {"simulated": True}, "passed": True, "qc": rendered.get("qc", {})}
+        if not qc["passed"]:
+            raise RuntimeError(f"QC failed: {qc['checks']}")
+        video_file = renderer_mod.file_record(rendered["video_path"])
+        thumb_file = renderer_mod.file_record(rendered["thumbnail_path"])
+        from app.services import storage as storage_mod
+        stored = storage_mod.place(request_id, ct, rendered["video_path"],
+                                   rendered["thumbnail_path"], output_dir)
 
         metadata = {"title": row.goal, "pulse": row.pulse,
                     "content_type": getattr(row, "content_type", "video") or "video",
@@ -121,8 +142,20 @@ def execute(db, request_id: str, output_dir: str, min_trust: float = 0.6) -> dic
                     "strategy": strategy.get("strategy", ""),
                     "structure": (timeline.get("structure", "beats")),
                     "render_profile": timeline.get("render_profile", ""),
+                    "provider": rendered.get("provider", ""),
+                    "provider_audit": rendered.get("audit", {}),
                     "reality_ratio": strategy.get("reality_ratio", 1.0),
-                    "voice_profile": voice.get("profile", "")}
+                    "voice_profile": voice.get("profile", ""),
+                    "duration_seconds": rendered.get("duration_seconds", 0),
+                    "width": rendered.get("width", 0),
+                    "height": rendered.get("height", 0),
+                    "fps": rendered.get("fps", 0),
+                    "subtitle_muxed": rendered.get("subtitle_muxed", False),
+                    "video": video_file, "thumbnail": thumb_file,
+                    "storage": stored, "qc": qc["checks"],
+                    "real_image_scenes": (rendered.get("audit", {}) or {}).get(
+                        "scenes_with_real_images", 0),
+                    "asset_requirements": getattr(row, "asset_requirements", {}) or {}}
         result = renderer_mod.export_package(
             request_id, rendered["video_path"], rendered["thumbnail_path"],
             metadata, output_dir)
@@ -161,6 +194,7 @@ def serialize(row) -> dict:
         "narration": getattr(row, "narration", "") or "",
         "brand_context": getattr(row, "brand_context", "") or "",
         "call_to_action": getattr(row, "call_to_action", "") or "",
+        "asset_requirements": getattr(row, "asset_requirements", {}) or {},
         "strategy": row.strategy_json, "timeline": row.timeline_json,
         "export": row.export_json, "error": row.error,
         "render_seconds": row.render_seconds, "export_seconds": row.export_seconds,

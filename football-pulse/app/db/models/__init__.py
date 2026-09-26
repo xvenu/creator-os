@@ -290,6 +290,11 @@ from app.db.models.phase5 import (  # noqa: E402, F401
     VoiceAsset,
 )
 
+# Phase 6 publication deliveries (pulse-owned publishing receipts).
+from app.db.models.phase6 import (  # noqa: E402, F401
+    PublicationDelivery,
+)
+
 # Zoza factory-tracking tables (Creator-OS refactor).
 from app.db.models.zoza import (  # noqa: E402, F401
     FactoryStatus,

@@ -1,0 +1,80 @@
+name: creator-os-ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  factory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Install
+        working-directory: zoza-factory
+        run: pip install -r requirements.txt
+      - name: Tests
+        working-directory: zoza-factory
+        run: python -m pytest -q
+
+  music:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Install
+        working-directory: music-pulse
+        run: pip install -r requirements.txt
+      - name: Tests
+        working-directory: music-pulse
+        run: python -m pytest -q
+
+  football:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Install
+        working-directory: football-pulse
+        run: pip install -r requirements.txt
+      - name: Tests
+        working-directory: football-pulse
+        run: python -m pytest -q
+
+  guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No local rendering in pulses
+        run: |
+          ! grep -rn "import ffmpeg\|from ffmpeg\|import moviepy\|import cv2" --include="*.py" music-pulse/app football-pulse/app || exit 1
+      - name: No publishing in Zoza
+        run: |
+          ! grep -rni "youtubeuploader\|tiktokuploader\|instagramuploader\|facebookuploader\|channeluploader" --include="*.py" zoza-factory/app || exit 1
+      - name: Single contract definition
+        run: |
+          test $(grep -rln "class ProductionRequestIn" --include="*.py" . | grep -v ".venv" | wc -l) -eq 1
+      - name: Secret scan (plaintext)
+        run: |
+          ! grep -rniE "sk-(live|test)-[A-Za-z0-9]{10,}|xox[bap]-|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}" --include="*.py" --include="*.yml" --include="*.env*" . | grep -v ".venv" || exit 1
+          ! git ls-files | grep -v ".env.example" | grep -E "^\S*\.env$" || exit 1
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose config validation
+        run: |
+          docker compose -f music-pulse/docker-compose.yml config > /dev/null
+          docker compose -f football-pulse/docker-compose.yml config > /dev/null
+          docker compose -f zoza-factory/docker-compose.yml config > /dev/null
+      - name: Build factory
+        run: docker build ./zoza-factory
+      - name: Build pulses
+        run: |
+          docker build ./music-pulse
+          docker build ./football-pulse

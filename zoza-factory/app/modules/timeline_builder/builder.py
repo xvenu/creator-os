@@ -66,6 +66,7 @@ def build_for_content(narration: str, length_seconds: float,
             "duration_seconds": dur,
             "asset": (asset or {}).get("source", ""),
             "asset_kind": (asset or {}).get("kind", "none"),
+            "asset_path": (asset or {}).get("path", ""),
             "status": "covered" if asset else "gap",
         })
         cursor += dur

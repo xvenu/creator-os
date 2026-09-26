@@ -1,30 +1,45 @@
 """Rendering system: assembly → subtitles → voice → rendering → exports.
 
-Simulated renderer (stdlib file writes, no ffmpeg). Real render providers
-plug in behind PROVIDERS without changing the pipeline. There is NO
-publishing code path in this module by design.
+Default production path is REAL media (local ffmpeg provider): H.264 MP4 +
+AAC audio + muxed subtitles + JPG thumbnail, QC-probed (never trusted from
+sidecars). `simulated-test-only` exists solely as an explicitly named test
+provider and is never the default. There is NO publishing code path in this
+module by design.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from pathlib import Path
 
 PROVIDERS = {
-    "render": [{"name": "simulated-1080p", "available": True},
-               {"name": "simulated-anime-1080p", "available": True},
-               {"name": "simulated-cinema-4k", "available": True},
-               {"name": "simulated-ad-1080p", "available": True},
-               {"name": "simulated-ai-1080p", "available": True}],
-    "voice": [{"name": "simulated-tts", "available": True}],
+    "render": [{"name": "local-ffmpeg", "available": True},
+               {"name": "runpod-gpu", "available": False},
+               {"name": "simulated-test-only", "available": True}],
+    "voice": [{"name": "synth-tone-bed", "available": True}],
     "assets": [{"name": "factory-catalog", "available": True},
                {"name": "factory-synthetic", "available": True}],
 }
 
 
 def provider_availability() -> dict:
-    return {kind: [{"name": p["name"], "available": p["available"]} for p in plist]
-            for kind, plist in PROVIDERS.items()}
+    try:
+        from app.modules.renderer import providers as prov
+        dyn = {p["name"]: p for p in prov.available() if "ffmpeg" in p["name"] or "runpod" in p["name"] or "simulated" in p["name"]}
+        render = []
+        for p in PROVIDERS["render"]:
+            entry = dict(p)
+            if p["name"] in dyn:
+                entry.update(dyn[p["name"]])
+            render.append({"name": entry["name"], "available": entry["available"]})
+        base = {kind: [{"name": p["name"], "available": p["available"]} for p in plist]
+                for kind, plist in PROVIDERS.items()}
+        base["render"] = render
+        return base
+    except Exception:
+        return {kind: [{"name": p["name"], "available": p["available"]} for p in plist]
+                for kind, plist in PROVIDERS.items()}
 
 
 def assemble(request_id: str, timeline: dict, voice: dict, output_dir: str) -> dict:
@@ -35,7 +50,9 @@ def assemble(request_id: str, timeline: dict, voice: dict, output_dir: str) -> d
         "request_id": request_id,
         "content_type": timeline.get("content_type", "video"),
         "structure": timeline.get("structure", "beats"),
-        "render_profile": timeline.get("render_profile", "simulated-1080p"),
+        "render_profile": timeline.get("render_profile", "local-ffmpeg"),
+        "render_width": timeline.get("render_width", 1280),
+        "render_height": timeline.get("render_height", 720),
         "scenes": timeline.get("scenes", []),
         "total_seconds": timeline.get("total_seconds", 0),
         "voice": {"profile": voice.get("profile"), "tone": voice.get("tone"),
@@ -48,25 +65,22 @@ def assemble(request_id: str, timeline: dict, voice: dict, output_dir: str) -> d
     return manifest
 
 
-def render_video(request_id: str, timeline: dict, output_dir: str) -> dict:
-    """Simulated render: deterministic placeholder video + thumbnail files."""
-    out = Path(output_dir) / request_id
-    out.mkdir(parents=True, exist_ok=True)
-    started = time.time()
-    total = float(timeline.get("total_seconds", 0))
-    profile = timeline.get("render_profile", "simulated-1080p")
-    content_type = timeline.get("content_type", "video")
-    video_path = out / "video.mp4"
-    video_path.write_bytes(
-        f"ZOZA-FACTORY-SIMULATED-RENDER request={request_id} seconds={total} "
-        f"profile={profile} content={content_type}\n".encode())
-    thumb_path = out / "thumbnail.jpg"
-    thumb_path.write_bytes(
-        f"ZOZA-FACTORY-SIMULATED-THUMBNAIL request={request_id} content={content_type}\n".encode())
-    elapsed = max(time.time() - started, 0.001)
-    return {"video_path": str(video_path.resolve()), "thumbnail_path": str(thumb_path.resolve()),
-            "duration_seconds": total, "render_seconds": elapsed,
-            "render_profile": profile, "content_type": content_type}
+def render_video(request_id: str, timeline: dict, output_dir: str,
+                 voice: dict | None = None, provider_name: str = "",
+                 resolution: tuple[int, int] | None = None) -> dict:
+    """Render real media via the configured provider (default local-ffmpeg)."""
+    from app.modules.renderer import providers as prov
+    voice = voice or {}
+    subtitles_srt = timeline.get("subtitles_srt", "") or ""
+    if resolution is None:
+        resolution = (int(timeline.get("render_width", 1280)),
+                      int(timeline.get("render_height", 720)))
+    provider = prov.select(provider_name)
+    result = provider.render(request_id, timeline, voice, output_dir,
+                             resolution, subtitles_srt)
+    result["render_profile"] = timeline.get("render_profile", provider.name)
+    result["content_type"] = timeline.get("content_type", "video")
+    return result
 
 
 def export_package(request_id: str, video_path: str, thumbnail_path: str,
@@ -80,6 +94,14 @@ def export_package(request_id: str, video_path: str, thumbnail_path: str,
     out = Path(output_dir) / request_id
     (out / "export.json").write_text(json.dumps(export, indent=2), encoding="utf-8")
     return {"export": export, "export_seconds": max(time.time() - started, 0.001)}
+
+
+def file_record(path: str) -> dict:
+    """Storage descriptor: location + checksum + size (no trust, just facts)."""
+    p = Path(path)
+    raw = p.read_bytes()
+    return {"location": str(p.resolve()), "sha256": hashlib.sha256(raw).hexdigest(),
+            "size_bytes": len(raw)}
 
 
 def _validate_export_shape(export: dict) -> dict:

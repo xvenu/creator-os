@@ -52,6 +52,7 @@ def _ensure_universal_columns() -> None:
         "narration": "TEXT DEFAULT ''",
         "brand_context": "VARCHAR(256) DEFAULT ''",
         "call_to_action": "VARCHAR(256) DEFAULT ''",
+        "asset_requirements": "JSON DEFAULT '{}'",
     }
     try:
         with get_engine().begin() as conn:

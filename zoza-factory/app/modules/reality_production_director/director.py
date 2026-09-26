@@ -36,7 +36,14 @@ def decide(request: dict, min_trust: float = 0.6) -> dict:
     """Full production decision for a Contract V2 request dict."""
     mode = request.get("production_mode", "REALITY_FIRST")
     content_type = ct_mod.normalize(request.get("content_type", "video"))
+    reqs = request.get("asset_requirements", {}) or {}
+    real_required = bool(reqs.get("real_media_required", False))
+    allow_ai_fill = reqs.get("allow_ai_fill", None)
     ai_allowed = effective_ai_allowed(mode, bool(request.get("ai_generation_allowed", False)))
+    if real_required and mode != "AI_CREATIVE":
+        ai_allowed = False
+    if allow_ai_fill is False:
+        ai_allowed = False
 
     # 1. Gather candidates: pulse sources + evidence + factory catalog rows.
     candidates = [assets_mod.normalize_source(s) for s in request.get("sources", [])]
@@ -52,6 +59,8 @@ def decide(request: dict, min_trust: float = 0.6) -> dict:
     usable = assets_mod.order(usable)
     # 3b. Content affinity: boost non-AI family kinds (stable, AI stays last).
     usable = _prefer_family_kinds(usable, content_type)
+    # 3c. Pulse-declared preferred categories (official_photo, licensed_video…).
+    usable = _prefer_required_categories(usable, reqs)
 
     # 4. Mode filtering (AI kinds, not just ai_generated).
     if mode == "REALITY_ONLY":
@@ -91,6 +100,12 @@ def decide(request: dict, min_trust: float = 0.6) -> dict:
         call_to_action=request.get("call_to_action", ""))
     timeline["render_profile"] = ct_mod.render_profile_for(
         content_type, _ai_ratio(usable))
+    from app.modules.renderer import media as media_mod
+    _w, _h = media_mod.resolution_for(
+        request.get("aspect_ratio", "16:9"), request.get("resolution", "1080p"),
+        content_type)
+    timeline["render_width"] = _w
+    timeline["render_height"] = _h
     # AI generation prompts for gap scenes (plan only, no network).
     gaps = [s for s in timeline.get("scenes", []) if s.get("status") == "gap"]
     generation = ai_mod.generation_plan(
@@ -108,6 +123,9 @@ def decide(request: dict, min_trust: float = 0.6) -> dict:
         "structure": timeline.get("structure", "beats"),
         "render_profile": timeline.get("render_profile", ""),
         "ai_generation_allowed_effective": ai_allowed,
+        "real_media_required": real_required,
+        "real_media_honored": real_required and not ai_injected and not any(
+            assets_mod.is_ai(a) for a in usable),
         "ai_fallback_injected": ai_injected,
         "generation_plan": generation,
         "assets": usable,
@@ -135,6 +153,19 @@ def _prefer_family_kinds(assets: list[dict], content_type: str) -> list[dict]:
     pref = set(preferred_non_ai)
     return sorted(assets, key=lambda a: (
         0 if a.get("kind") in pref else 1, assets_mod.rank_key(a)))
+
+
+def _prefer_required_categories(assets: list[dict], reqs: dict) -> list[dict]:
+    """Boost pulse-declared preferred_types (categories). AI never jumps."""
+    wanted = [str(t).lower() for t in (reqs.get("preferred_types") or [])]
+    if not wanted:
+        return assets
+    def _hit(a: dict) -> bool:
+        cat = str(a.get("category", "")).lower()
+        kind = str(a.get("kind", "")).lower()
+        return any(w in (cat, kind) for w in wanted)
+    return sorted(assets, key=lambda a: (
+        0 if (_hit(a) and not assets_mod.is_ai(a)) else 1, assets_mod.rank_key(a)))
 
 
 def _narration(request: dict) -> str:

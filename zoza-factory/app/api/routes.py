@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_db
+from app.api.deps import auth_context, get_db, scope_check
 from app.core.config import get_settings
 from app.modules.reality_assets import acquisition as assets_mod
 from app.modules.rights_validation import validator as rights_mod
@@ -21,31 +21,50 @@ def _db_error(exc: ValueError, code: int = 404) -> HTTPException:
 
 
 @router.post("/requests")
-def create_request(body: ProductionRequestIn, db=Depends(get_db)):
+def create_request(body: dict, db=Depends(get_db),
+                   ctx: dict = Depends(auth_context)):
+    from app.schemas.contract import ProductionRequestIn, normalize_compat
     try:
-        return pipeline_mod.submit(db, body.model_dump(mode="json"))
+        req = ProductionRequestIn(**normalize_compat(body))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)[:300])
+    data = req.model_dump(mode="json")
+    # Non-admin callers may only create requests attributed to their own pulse.
+    if not ctx.get("admin") and ctx.get("pulse"):
+        data["pulse"] = ctx["pulse"]
+    try:
+        return pipeline_mod.submit(db, data)
     except ValueError as exc:
         raise _db_error(exc, 409)
 
 
 @router.get("/requests")
-def list_requests(db=Depends(get_db)):
+def list_requests(db=Depends(get_db), ctx: dict = Depends(auth_context)):
     from app.models.production import ProductionRequest
-    rows = db.query(ProductionRequest).order_by(ProductionRequest.id.desc()).limit(50).all()
+    q = db.query(ProductionRequest).order_by(ProductionRequest.id.desc()).limit(50)
+    rows = q.all()
+    if not ctx.get("admin") and ctx.get("pulse"):
+        rows = [r for r in rows if (r.pulse or "") in ("", ctx["pulse"])]
     return [pipeline_mod.serialize(r) for r in rows]
 
 
 @router.get("/requests/{request_id}")
-def get_request(request_id: str, db=Depends(get_db)):
+def get_request(request_id: str, db=Depends(get_db),
+                ctx: dict = Depends(auth_context)):
     try:
-        return pipeline_mod.serialize(pipeline_mod.get(db, request_id))
+        row = pipeline_mod.get(db, request_id)
+        scope_check(ctx, row.pulse or "")
+        return pipeline_mod.serialize(row)
     except ValueError as exc:
         raise _db_error(exc)
 
 
 @router.post("/requests/{request_id}/plan")
-def plan_request(request_id: str, db=Depends(get_db)):
+def plan_request(request_id: str, db=Depends(get_db),
+                 ctx: dict = Depends(auth_context)):
     try:
+        row = pipeline_mod.get(db, request_id)
+        scope_check(ctx, row.pulse or "")
         return pipeline_mod.plan(db, request_id,
                                  min_trust=get_settings().reality_min_trust)
     except ValueError as exc:
@@ -53,8 +72,11 @@ def plan_request(request_id: str, db=Depends(get_db)):
 
 
 @router.post("/requests/{request_id}/execute")
-def execute_request(request_id: str, db=Depends(get_db)):
+def execute_request(request_id: str, db=Depends(get_db),
+                    ctx: dict = Depends(auth_context)):
     try:
+        row = pipeline_mod.get(db, request_id)
+        scope_check(ctx, row.pulse or "")
         return pipeline_mod.execute(db, request_id, get_settings().output_dir,
                                     min_trust=get_settings().reality_min_trust)
     except ValueError as exc:
@@ -62,9 +84,11 @@ def execute_request(request_id: str, db=Depends(get_db)):
 
 
 @router.get("/exports/{request_id}")
-def get_export(request_id: str, db=Depends(get_db)):
+def get_export(request_id: str, db=Depends(get_db),
+               ctx: dict = Depends(auth_context)):
     try:
         row = pipeline_mod.get(db, request_id)
+        scope_check(ctx, row.pulse or "")
     except ValueError as exc:
         raise _db_error(exc)
     if row.state != "exported":

@@ -35,12 +35,19 @@ class PublishJob(Base):
     __tablename__ = "publish_jobs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     content_id: Mapped[int] = mapped_column(ForeignKey("content_items.id"))
-    platform: Mapped[str] = mapped_column(String(32))  # telegram|x|tiktok|instagram|youtube
+    platform: Mapped[str] = mapped_column(String(32))  # telegram|x|tiktok|instagram|youtube|webhook
     status: Mapped[str] = mapped_column(String(32), default="queued")  # queued|sending|sent|failed
     scheduled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     last_error: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Idempotency + receipt (008): deterministic key per publish intent.
+    idempotency_key: Mapped[str] = mapped_column(String(64), default="", unique=True, index=True)
+    target_account: Mapped[str] = mapped_column(String(128), default="")
+    content_version: Mapped[str] = mapped_column(String(32), default="v1")
+    remote_id: Mapped[str] = mapped_column(String(256), default="")
+    remote_status: Mapped[str] = mapped_column(String(32), default="")
+    published_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
 
 class MetricEvent(Base):

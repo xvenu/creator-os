@@ -14,7 +14,7 @@ REGISTRY: dict[str, dict] = {
         "structure": "beats",
         "default_voice": "documentary",
         "default_aspect": "16:9",
-        "render_profile": "simulated-1080p",
+        "render_profile": "local-ffmpeg-720p",
         "max_length": 3600,
     },
     "anime": {
@@ -23,7 +23,7 @@ REGISTRY: dict[str, dict] = {
         "structure": "cold_open-beats-tag",
         "default_voice": "anime-dub",
         "default_aspect": "16:9",
-        "render_profile": "simulated-anime-1080p",
+        "render_profile": "local-ffmpeg-anime",
         "max_length": 3600,
         "preferred_kinds": ["anime_keyframe", "anime_background", "real_photo",
                             "public_domain", "ai_generated"],
@@ -34,7 +34,7 @@ REGISTRY: dict[str, dict] = {
         "structure": "three-acts",
         "default_voice": "cinematic-trailer",
         "default_aspect": "21:9",
-        "render_profile": "simulated-cinema-4k",
+        "render_profile": "local-ffmpeg-cinema",
         "max_length": 10800,
     },
     "ad": {
@@ -43,7 +43,7 @@ REGISTRY: dict[str, dict] = {
         "structure": "hook-body-cta",
         "default_voice": "commercial",
         "default_aspect": "16:9",
-        "render_profile": "simulated-ad-1080p",
+        "render_profile": "local-ffmpeg-ad",
         "max_length": 300,
         "preferred_kinds": ["product_shot", "brand_asset", "real_footage",
                             "real_photo", "ai_generated"],
@@ -54,7 +54,7 @@ REGISTRY: dict[str, dict] = {
         "structure": "beats",
         "default_voice": "cinematic-trailer",
         "default_aspect": "16:9",
-        "render_profile": "simulated-ai-1080p",
+        "render_profile": "local-ffmpeg-ai",
         "max_length": 3600,
     },
 }
@@ -86,7 +86,7 @@ def render_profile_for(content_type: str | None, ai_ratio: float = 0.0) -> str:
     """Render profile is driven by content family; full-AI video falls
     back to the synthetic profile regardless of family."""
     if ai_ratio >= 1.0:
-        return "simulated-ai-1080p"
+        return "local-ffmpeg-ai"
     return spec(content_type)["render_profile"]
 
 

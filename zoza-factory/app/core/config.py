@@ -29,6 +29,30 @@ class Settings(BaseSettings):
     reality_min_trust: float = 0.6
     shared_bus_forwarding: bool = False
 
+    # Render provider selection (Pulse never sees this): local-ffmpeg is the
+    # default production path; "simulated" is an explicitly named test-only
+    # provider; "runpod" selects the GPU provider (requires RUNPOD_* below).
+    render_provider: str = "local-ffmpeg"
+    render_fps: int = 24
+
+    # RunPod GPU provider (real integration; unset = unavailable, fail-closed
+    # with an explicit error — never silently fall back and claim GPU work).
+    runpod_api_key: str = ""
+    runpod_endpoint_id: str = ""
+    runpod_timeout_seconds: float = 600.0
+
+    # Production storage: local filesystem default; s3-compatible optional.
+    storage_backend: str = "local"
+    storage_s3_bucket: str = ""
+    storage_s3_prefix: str = "zoza-exports/"
+    storage_s3_endpoint: str = ""
+
+    # Factory auth: per-pulse bearer tokens + admin token. Empty = auth
+    # disabled (development only); production requires all three set.
+    pulse_token_music: str = ""
+    pulse_token_football: str = ""
+    factory_admin_token: str = ""
+
     @property
     def is_test(self) -> bool:
         return self.environment == "test"

@@ -44,6 +44,27 @@ def create_app() -> FastAPI:
     def health():
         return {"status": "ok", "service": "musicpulse"}
 
+    @app.get("/ready")
+    def ready():
+        """Readiness: database only. Zoza/Telegram/Redis are optional and
+        must never prevent startup (fail-open autonomy)."""
+        try:
+            from sqlalchemy import text
+            from app.core.database import get_session_factory
+            db = get_session_factory()()
+            try:
+                db.execute(text("SELECT 1"))
+            finally:
+                db.close()
+            db_status = "up"
+        except Exception:
+            db_status = "down"
+        return {"status": "ready" if db_status == "up" else "degraded",
+                "service": "musicpulse",
+                "dependencies": {"database": db_status,
+                                 "zoza": "optional",
+                                 "telegram": "optional"}}
+
     return app
 
 

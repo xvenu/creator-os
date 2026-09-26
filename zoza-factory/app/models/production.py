@@ -38,6 +38,7 @@ class ProductionRequest(Base):
     narration: Mapped[str] = mapped_column(Text, default="")
     brand_context: Mapped[str] = mapped_column(String(256), default="")
     call_to_action: Mapped[str] = mapped_column(String(256), default="")
+    asset_requirements: Mapped[dict] = mapped_column(JSON, default=dict)
 
     state: Mapped[str] = mapped_column(String(16), default="created", index=True)
     strategy_json: Mapped[dict] = mapped_column(JSON, default=dict)
