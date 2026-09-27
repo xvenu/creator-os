@@ -9,8 +9,9 @@
   execution — stray untracked `anime-pulse/` stub (README only, not a pulse) and
   an `anime-pulse` line injected into `zoza-factory/docs/ARCHITECTURE.md`.
   Both removed; no new Pulse exists; architecture unchanged.
-- **Remote CI:** run `36307361759` on commit `9dd84f6` — **5/5 jobs green**
-  (factory, music, football, guardrails, docker). Two prior runs failed for real
+- **Remote CI:** runs `36307361759` (code commit `9dd84f6`) and `36307961422`
+  (HEAD, cert-only delta) — **5/5 jobs green on both**
+  (factory, music, football, guardrails, docker). Two early runs failed for real
   reasons and were fixed without weakening tests: missing `fakeredis`/pytest in
   CI env, factory auth-fixture env leak, order-dependent contract test,
   compose `env_file` setup. CI fix commit `dc40f72` re-ran green.
