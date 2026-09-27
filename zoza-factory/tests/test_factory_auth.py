@@ -13,6 +13,9 @@ from app.core.database import get_session_factory, init_db, reset_engine
 @pytest.fixture(scope="module")
 def auth_client(tmp_path_factory):
     d = tmp_path_factory.mktemp("auth")
+    saved = {k: os.environ.get(k) for k in
+             ("PULSE_TOKEN_MUSIC", "PULSE_TOKEN_FOOTBALL", "FACTORY_ADMIN_TOKEN",
+              "DATABASE_URL", "OUTPUT_DIR")}
     os.environ["PULSE_TOKEN_MUSIC"] = "tok-music-123"
     os.environ["PULSE_TOKEN_FOOTBALL"] = "tok-foot-456"
     os.environ["FACTORY_ADMIN_TOKEN"] = "tok-admin-789"
@@ -36,8 +39,11 @@ def auth_client(tmp_path_factory):
     app.dependency_overrides[get_db] = _override
     with TestClient(app) as c:
         yield c
-    for var in ("PULSE_TOKEN_MUSIC", "PULSE_TOKEN_FOOTBALL", "FACTORY_ADMIN_TOKEN"):
-        os.environ.pop(var, None)
+    for var, val in saved.items():
+        if val is None:
+            os.environ.pop(var, None)
+        else:
+            os.environ[var] = val
     get_settings.cache_clear()
     reset_engine()
 

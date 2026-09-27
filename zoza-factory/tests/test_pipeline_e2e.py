@@ -42,17 +42,19 @@ def test_full_pipeline_football_tactical(client):
     assert row["timeline"]["total_seconds"] == 45
 
 
-def test_export_conforms_to_shared_contract():
+def test_export_conforms_to_shared_contract(client):
     """Every factory export must pass shared/contracts.py::validate_export."""
     import sys
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/..")
     from shared.contracts import validate_export
-    from tests.conftest import _TEST_DIR
-    import json
-    for req_id in ("req-e2e-music", "req-e2e-football"):
-        path = os.path.join(_TEST_DIR, "output", req_id, "export.json")
-        with open(path) as f:
-            validate_export(json.load(f))
+    from tests.conftest import make_request
+    # Self-contained: produce fresh exports instead of relying on other tests.
+    for req_id, pulse in (("req-contract-music", "music-pulse"),
+                          ("req-contract-football", "football-pulse")):
+        body = make_request(request_id=req_id, pulse=pulse, length_seconds=20)
+        assert client.post("/api/v1/requests", json=body).status_code == 200
+        export = client.post(f"/api/v1/requests/{req_id}/execute").json()
+        validate_export(dict(export))  # raises on any contract violation
 
 
 def test_capacity_report_shape(client):
